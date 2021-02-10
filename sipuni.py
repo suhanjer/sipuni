@@ -63,24 +63,60 @@ def off_hours_calls(conn):
 
     return list_of_times
 
+def call_destinations(conn):
+    cur = conn.cursor()
+
+    schemes = []
+    cur.execute("SELECT DISTINCT Scheme FROM calls WHERE Type='Входящий'")
+    schemes_list = cur.fetchall()
+    for i in schemes_list:
+        schemes.append(i[0])
+
+    operators = []
+    cur.execute("SELECT DISTINCT Operator FROM calls WHERE Type='Входящий'")
+    operators_list = cur.fetchall()
+    for i in operators_list:
+        operators.append(i[0])
+
+    for i in schemes:
+        cur.execute(f"SELECT COUNT(*) FROM calls WHERE Type='Входящий' AND Scheme='{i}'")
+        number_of_calls = cur.fetchall()
+        cur.execute(f"SELECT COUNT(*) FROM calls WHERE Type='Входящий' AND Status='Отвечен' AND Scheme='{i}'")
+        number_of_accepted_calls = cur.fetchall()
+        print(f"{i}")
+        print(f"   Входящие - {number_of_calls[0][0]}")
+        print(f"   Принятые - {number_of_accepted_calls[0][0]} ({round(number_of_accepted_calls[0][0]/number_of_calls[0][0]*100, 1)}%)")
+        print(f"        Не принятые - {number_of_calls[0][0] - number_of_accepted_calls[0][0]} ({round((number_of_calls[0][0] - number_of_accepted_calls[0][0])/number_of_calls[0][0]*100, 1)}%)")
+        
+        for j in operators:
+            cur.execute(f"SELECT COUNT(*) FROM calls WHERE Type='Входящий' AND Status='Отвечен' AND Scheme='{i}' AND Operator='{j}'")
+            number_of_calls_by_operator = cur.fetchall()
+            for k in number_of_calls_by_operator:
+                if k[0] != 0:
+                    print(f"        {j} - {k[0]} ({round(k[0]/number_of_calls[0][0]*100, 1)}%)")
+                    #print(i, number_of_calls, number_of_accepted_calls, j, k[0])
+
+        print("\n")
+            
+
 def main():
     database = "sipuni.db"
 
     conn = create_connection(database)
     with conn:
-        #Total number of calls
+        #1. Total number of calls
         print('\n')
         total_number_of_calls = number_of_calls(conn)[0][0]
         print(f'Количество звонков = {total_number_of_calls}')
         print('\n')
         
-        #Number of calls by type
+        #2. Number of calls by type
         a = all_calls(conn)
         for i in a:
             print(i, '=', a[i])
         print('\n')
 
-        #Number of incoming calls by operator
+        #3. Number of incoming calls by operator
         number_of_accepted_calls = 0
         operators = answered_calls_by_operator(conn)
         for i in operators:
@@ -89,7 +125,7 @@ def main():
         print(f"Пропущенные = {a['Входящий'] - number_of_accepted_calls} ({round((a['Входящий'] - number_of_accepted_calls)/a['Входящий']*100, 2)}%)")
         print("\n")
 
-        #off hours incoming calls
+        #4. off hours incoming calls
         timestamps = off_hours_calls(conn)
         #print(timestamps)
         hours = []
@@ -107,6 +143,10 @@ def main():
 
         print(f"Входящие (рабочее время) = {working} ({round((working/(working+off)*100), 2)}%)")
         print(f"Входящие (нерабочее время) = {off} ({round((off/(working+off)*100), 2)}%)")
+        print("\n")
+
+        #5. Schemes
+        call_destinations(conn)
 
 
 if __name__=='__main__':
