@@ -97,7 +97,30 @@ def call_destinations(conn):
                     #print(i, number_of_calls, number_of_accepted_calls, j, k[0])
 
         print("\n")
-            
+
+#outgoing calls
+def outgoing_calls(conn):
+    cur = conn.cursor()
+
+    cur.execute("SELECT COUNT(*) FROM calls WHERE Type='Исходящий'")
+    outgoing = cur.fetchall()[0][0]
+    print(f"Исходящие - {outgoing}")
+
+    cur.execute("SELECT COUNT(*) FROM calls WHERE Type='Исходящий' AND Status='Отвечен'")
+    accepted = cur.fetchall()[0][0]
+    print(f"Отвеченные - {accepted} ({round(accepted/outgoing*100, 1)}%)")
+
+    cur.execute("SELECT DISTINCT Origin FROM calls WHERE Type='Исходящий'")
+    operators = cur.fetchall()
+
+    calls = 0
+    for i in operators:
+        cur.execute(f"SELECT COUNT(*) FROM calls WHERE Type='Исходящий' AND Origin='{i[0]}'")
+        calls = cur.fetchall()[0][0]
+        cur.execute(f"SELECT COUNT(*) FROM calls WHERE Type='Исходящий' AND Status='Отвечен' AND Origin='{i[0]}'")
+        accepted_calls = cur.fetchall()[0][0]
+        print(f"    {i[0]} - {accepted_calls}/{calls} ({round(calls/outgoing*100, 1)}%)")
+
 
 def main():
     database = "sipuni.db"
@@ -105,27 +128,38 @@ def main():
     conn = create_connection(database)
     with conn:
         #1. Total number of calls
-        print('\n')
+        print('=================================================')
         total_number_of_calls = number_of_calls(conn)[0][0]
         print(f'Количество звонков = {total_number_of_calls}')
         print('\n')
         
         #2. Number of calls by type
+        print("Принятые по типу")
+        print('=================================================')
         a = all_calls(conn)
         for i in a:
             print(i, '=', a[i])
         print('\n')
 
         #3. Number of incoming calls by operator
+        print("Принятые по опеаторам")
+        print('=================================================')
         number_of_accepted_calls = 0
         operators = answered_calls_by_operator(conn)
         for i in operators:
             number_of_accepted_calls += operators[i]
             print(f"{i} = {operators[i]} ({round(operators[i]/a['Входящий']*100, 2)}%)")
-        print(f"Пропущенные = {a['Входящий'] - number_of_accepted_calls} ({round((a['Входящий'] - number_of_accepted_calls)/a['Входящий']*100, 2)}%)")
+        print("\n")
+        
+        print("Входящие")
+        print('=================================================')
+        print(f"    Принятые = {number_of_accepted_calls} ({round(number_of_accepted_calls/a['Входящий']*100, 2)}%)")
+        print(f"    Пропущенные = {a['Входящий'] - number_of_accepted_calls} ({round((a['Входящий'] - number_of_accepted_calls)/a['Входящий']*100, 2)}%)")
         print("\n")
 
         #4. off hours incoming calls
+        print("Время поступающих звонков")
+        print('=================================================')
         timestamps = off_hours_calls(conn)
         #print(timestamps)
         hours = []
@@ -146,7 +180,14 @@ def main():
         print("\n")
 
         #5. Schemes
+        print("Схемы")
+        print('=================================================')
         call_destinations(conn)
+
+        #6. Outgoing calls
+        print('Исходящие')
+        print('=================================================')
+        outgoing_calls(conn)
 
 
 if __name__=='__main__':
