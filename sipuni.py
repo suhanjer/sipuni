@@ -1,6 +1,13 @@
 import sqlite3
 import datetime
 
+#imported from csv_to_db.py file from the same forlder
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++
+import csv_to_db
+
+csv_to_db
+#=====================================================
+
 def create_connection(db_file):
     conn = None
     try:
@@ -119,7 +126,7 @@ def outgoing_calls(conn):
         calls = cur.fetchall()[0][0]
         cur.execute(f"SELECT COUNT(*) FROM calls WHERE Type='Исходящий' AND Status='Отвечен' AND Origin='{i[0]}'")
         accepted_calls = cur.fetchall()[0][0]
-        print(f"    {i[0]} - {accepted_calls}/{calls} ({round(calls/outgoing*100, 1)}%)")
+        print(f"    {i[0]} - {accepted_calls}/{calls} ({round(calls/outgoing*100, 1)}% Все звонки, пропущенные и принятые)")
 
 
 def main():
